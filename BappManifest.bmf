@@ -1,0 +1,13 @@
+Uuid: e117f405368f48fa9d87bce7b96e9908
+ExtensionType: 2
+Name: HTTP Batch Tool
+RepoName: http-batch-tool
+ScreenVersion: 1.0.0
+SerialVersion: 1
+MinPlatformVersion: 0
+ProOnly: False
+Author: emano888
+ShortDescription: Facilitates fast, bulk HTTP requests from a list of URLs for quick testing, automation, and reconnaissance, with output visible in Burp's Extender console.
+EntryPoint: BurpFire.py
+BuildCommand: 
+SupportedProducts: Pro, Community
