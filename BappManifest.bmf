@@ -6,8 +6,8 @@ ScreenVersion: 1.0.0
 SerialVersion: 1
 MinPlatformVersion: 0
 ProOnly: False
-Author: emano888
-ShortDescription: Facilitates fast, bulk HTTP requests from a list of URLs for quick testing, automation, and reconnaissance, with output visible in Burp's Extender console.
+Author: Emanuel Caique
+ShortDescription: Facilitates fast, bulk HTTP requests from a list of URLs for quick testing and automation.
 EntryPoint: BurpFire.py
 BuildCommand: 
 SupportedProducts: Pro, Community

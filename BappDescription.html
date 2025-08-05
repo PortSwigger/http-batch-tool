@@ -1,15 +1,22 @@
-BurpFire (HTTP Batch Tool) is designed to add functionality to the Burp Suite, facilitating fast and bulk HTTP requests from a user-specified list of URLs. Its ideal for pentesting, reconnaissance, and endpoint validation. Adding a custom tab to the Burp Suite interface, users can paste a list of URLs into the provided space and with a single click, send HTTP requests through Burp's proxy.
+<p>HTTP Batch Tool enables bulk HTTP request processing by allowing users to paste multiple URLs and send them all
+    through Burp's proxy with a single click. This extension streamlines reconnaissance and testing workflows by
+    automating the dispatch of numerous requests for analysis and inspection.</p>
 
 <h2>Features</h2>
-
-- Ability to add a list of URLs (one per line)
-- Automatically sends all requests to the Burp Suite Logger
-- Right-click option -&gt; Paste URLs directly from the clipboard
-- Specifically designed to enable quick testing, automation, and reconnaissance
+<ul>
+    <li>Batch processing of multiple URLs from a text input area</li>
+    <li>Multithreaded request handling for improved performance</li>
+    <li>Custom User-Agent header injection for consistent request formatting</li>
+    <li>Real-time output and error reporting in the Extender console</li>
+    <li>Support for both HTTP and HTTPS protocols with automatic port detection</li>
+</ul>
 
 <h2>Usage</h2>
-
-- Based on a multithreaded request handling system
-- The outcomes of sent requests are displayed in Burps Extender console
-
-The user interface includes a large text area for entering or pasting multiple URLs (one per line). At the bottom is a Send Requests button. The interface is simple and focused, with a right-click context menu containing the Paste URLs option. This feature allows for direct pasting of URLs from the clipboard, facilitating quick dispatch of HTTP requests through Burps Logger for easy inspection and analysis.
+<ol>
+    <li>Navigate to the HTTP Batch Tool tab within Burp Suite</li>
+    <li>Paste or type multiple URLs in the text area, one per line</li>
+    <li>Alternatively, right-click in the text area and select <code class="InlineCode">Paste URLs</code> to import from
+        clipboard</li>
+    <li>Click <code class="InlineCode">Send Requests</code> to dispatch all URLs</li>
+    <li>Review captured requests and responses in Burp's Logger tab for further analysis</li>
+</ol>
