@@ -3,8 +3,8 @@ ExtensionType: 2
 Name: HTTP Batch Tool
 RepoName: http-batch-tool
 ScreenVersion: 1.0.0
-SerialVersion: 2
-MinPlatformVersion: 0
+SerialVersion: 3
+MinPlatformVersion: 2
 ProOnly: False
 Author: Emanuel Caique
 ShortDescription: Facilitates fast, bulk HTTP requests from a list of URLs for quick testing and automation.
