@@ -1,60 +1,61 @@
 # 📝 HTTP Batch Tool for Burp Suite
 
-**HTTP Batch Tool** is a Burp Suite extension that provides a custom tab
-where you can paste a list of URLs and send multiple HTTP requests in
-parallel. Results are displayed in a sortable table with detailed status
-for each request.
+**HTTP Batch Tool** is a Burp Suite extension that adds a custom tab where you can paste a list of URLs and send multiple HTTP requests in parallel. Results are displayed in a sortable table, with details for each request, along with full **Request** and **Response** viewers inside the same tab.
 
 ## 🔧 Features
 
--   Paste or type a list of URLs (one per line).
--   Send multiple requests concurrently (thread pool of 10 workers).
--   **Results table** with the following columns:
-    -   **URL**
-    -   **Status** (HTTP status code or error)
-    -   **Length** (response size in bytes)
-    -   **Time** (request duration in ms or seconds)
--   Real-time status updates showing request progress
-    (`Completed X/Y requests`).
--   Right-click context menu in the input area → **Paste URLs**.
--   Logs for each request printed in Burp's **Extender console** (host,
-    port, protocol, path, errors).
--   Custom **User-Agent** header automatically set (`Firefox 78`).
--   "Send Requests" button is disabled during execution and re-enabled
-    after completion.
--   Graceful error handling for malformed URLs, empty responses, or
-    failed requests.
+* Paste or type a list of URLs (one per line).
+* Send multiple requests concurrently (pool of 10 threads).
+* **Results table** with the following columns:
+
+  * **URL**
+  * **Status** (HTTP status code or error)
+  * **Length** (response size in bytes)
+  * **Time** (duration in ms or seconds)
+* Detailed **Request** and **Response** display when clicking a table row.
+* Real-time progress updates (`Completed X/Y requests`).
+* Right-click context menu in the input area → **Paste URLs**.
+* Orange **Send Requests** button (Burp style), disabled during execution and re-enabled after completion.
+* Custom **User-Agent** automatically set (`Firefox 78`).
+* Error handling for:
+
+  * Malformed URLs
+  * Empty responses
+  * Failed requests
+* Logs and progress messages available in Burp’s **Extender Console**.
 
 ## 💡 How It Works
 
-1.  Paste or enter multiple URLs in the text area.
-2.  Click **Send Requests**.
-3.  Each request is executed through Burp's proxy in parallel.
-4.  Results are added to the table and progress is shown in the status
-    label.
-5.  Detailed logs are available in the Extender console.
+1. Paste or enter multiple URLs in the text area.
+2. Click **Send Requests**.
+3. Each request is executed through Burp’s proxy in parallel.
+4. Results appear in the table and progress is shown in the status label.
+5. Click a table row to view the full Request/Response.
+6. Additional logs are available in the Extender console.
 
-## 📸 Preview
+## 📸 Interface
 
-![BurpFire Preview](preview.png)
+![Preview](preview2.png)
 
-The interface includes:
+The **HTTP Batch Tool** tab includes:
 
--   A **multi-line text area** for URL input.
--   An orange **Send Requests** button.
--   A status label that tracks progress.
--   A sortable results table with **URL, Status, Length, Time**.
+* Multi-line text area for URL input.
+* Orange **Send Requests** button.
+* Status label showing progress.
+* Sortable results table with **URL, Status, Length, Time**.
+* HTTP message viewer (tabs for **Request** and **Response**).
 
 ## 📦 Installation
 
-1.  Make sure **Jython** is installed and configured in Burp Suite.
-2.  Open `Extender → Extensions → Add`.
-3.  Select:
-    -   **Extension type**: Python
-    -   File: `http-batch-tool.py`
-4.  The tab **HTTP Batch Tool** will appear inside Burp.
+1. Make sure **Jython** is installed and configured in Burp Suite.
+2. Go to `Extender → Extensions → Add`.
+3. Configure:
+
+   * **Extension type**: Python
+   * **File**: `http-batch-tool.py`
+4. The **HTTP Batch Tool** tab will appear in Burp.
 
 ## 📄 License
 
-This project is licensed under the MIT License -- see the
+This project is licensed under the MIT License — see the
 [LICENSE](LICENSE) file for details.
