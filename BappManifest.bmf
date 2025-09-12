@@ -3,7 +3,7 @@ ExtensionType: 2
 Name: HTTP Batch Tool
 RepoName: http-batch-tool
 ScreenVersion: 1.0.0
-SerialVersion: 4
+SerialVersion: 5
 MinPlatformVersion: 2
 ProOnly: False
 Author: Emanuel Caique
