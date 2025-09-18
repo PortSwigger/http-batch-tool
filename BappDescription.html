@@ -1,21 +1,26 @@
-<p>HTTP Batch Tool enables bulk HTTP request processing by allowing users to paste multiple URLs and send them all
-    through Burp's proxy with a single click. This extension streamlines reconnaissance and testing workflows by
-    automating the dispatch of numerous requests for analysis and inspection.</p>
+<p>HTTP Batch Tool enables efficient bulk HTTP request processing by allowing users to paste multiple URLs and send them
+    concurrently. The extension provides a dedicated tab with an intuitive interface that displays results in a sortable
+    table with detailed request and response viewers, streamlining reconnaissance and testing workflows.</p>
 
 <h2>Features</h2>
 <ul>
-    <li>Batch processing of multiple URLs from a text input area</li>
-    <li>Multithreaded request handling for improved performance</li>
-    <li>Real-time output and error reporting in the Extender console</li>
-    <li>Support for both HTTP and HTTPS protocols with automatic port detection</li>
+    <li>Concurrent processing of multiple URLs</li>
+    <li>Interactive results table showing URL, status code, response length, and request duration</li>
+    <li>Integrated request and response viewers with full message details</li>
+    <li>Real-time progress tracking with completion status updates</li>
+    <li>Right-click context menu for convenient URL pasting from clipboard</li>
+    <li>Automatic error handling for malformed URLs and failed requests</li>
+    <li>Custom User-Agent header configuration for consistent request profiling</li>
 </ul>
 
 <h2>Usage</h2>
 <ol>
-    <li>Navigate to the HTTP Batch Tool tab within Burp Suite</li>
+    <li>Navigate to the "HTTP Batch Tool" tab within Burp Suite</li>
     <li>Paste or type multiple URLs in the text area, one per line</li>
-    <li>Alternatively, right-click in the text area and select <code class="InlineCode">Paste URLs</code> to import from
+    <li>Alternatively, right-click in the text area and select "Paste URLs" to import from
         clipboard</li>
-    <li>Click <code class="InlineCode">Send Requests</code> to dispatch all URLs</li>
-    <li>Review captured requests and responses in Burp's Logger tab for further analysis</li>
+    <li>Click the "Send Requests" button to dispatch all URLs concurrently</li>
+    <li>Monitor real-time progress updates in the status label</li>
+    <li>Click any row in the results table to view the complete request and response details</li>
+    <li>Sort results by any column to organize findings effectively</li>
 </ol>
