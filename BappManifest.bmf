@@ -2,8 +2,8 @@ Uuid: e117f405368f48fa9d87bce7b96e9908
 ExtensionType: 2
 Name: HTTP Batch Tool
 RepoName: http-batch-tool
-ScreenVersion: 1.0.0
-SerialVersion: 7
+ScreenVersion: 1.1.0
+SerialVersion: 8
 MinPlatformVersion: 2
 ProOnly: False
 Author: Emanuel Caique
