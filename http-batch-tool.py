@@ -5,11 +5,12 @@ from java.awt.event import MouseAdapter, MouseEvent
 from java.awt.datatransfer import DataFlavor
 from javax.swing import JPanel, JTextArea, JButton, JScrollPane, JPopupMenu, JMenuItem, JTable, JSplitPane, JLabel, SwingConstants, JTabbedPane
 from javax.swing.table import DefaultTableModel
-from java.net import URL, MalformedURLException
+from java.net import URL, MalformedURLException, InetAddress, UnknownHostException
 from java.util.concurrent import Executors, TimeUnit
 from java.lang import Runnable
 from threading import Lock
 import time
+import re
 
 class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
     def registerExtenderCallbacks(self, callbacks):
@@ -95,6 +96,7 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
         self.table_model.addColumn("Status")
         self.table_model.addColumn("Length")
         self.table_model.addColumn("Time")
+        self.table_model.addColumn("Error Details")
         
         self.results_table = JTable(self.table_model)
         self.results_table.setAutoCreateRowSorter(True)
@@ -102,6 +104,7 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
         self.results_table.getColumnModel().getColumn(1).setPreferredWidth(60)
         self.results_table.getColumnModel().getColumn(2).setPreferredWidth(60)
         self.results_table.getColumnModel().getColumn(3).setPreferredWidth(80)
+        self.results_table.getColumnModel().getColumn(4).setPreferredWidth(150)
         
         # Add mouse listener for table row selection
         self.results_table.addMouseListener(TableMouseListener(self))
@@ -157,6 +160,96 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
     def getUiComponent(self):
         return self.panel
 
+    def validate_url_format(self, url):
+        """Validate URL format using regex"""
+        url_pattern = re.compile(
+            r'^https?://'  # http:// ou https://
+            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain
+            r'localhost|'  # localhost
+            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # IP
+            r'(?::\d+)?'  # optional port
+            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        return url_pattern.match(url) is not None
+
+    def test_dns_resolution(self, host):
+        """Test DNS resolution of the host"""
+        try:
+            address = InetAddress.getByName(host)
+            self._callbacks.printOutput(u"DNS resolved: {} -> {}".format(host, address.getHostAddress()))
+            return True, None
+        except UnknownHostException as e:
+            error_msg = "Host not found (DNS resolution failed)"
+            self._callbacks.printError(u"DNS resolution failed for {}: {}".format(host, unicode(e)))
+            return False, error_msg
+        except Exception as e:
+            error_msg = "DNS error: {}".format(unicode(e))
+            self._callbacks.printError(u"DNS test error for {}: {}".format(host, unicode(e)))
+            return False, error_msg
+
+    def validate_and_process_urls(self):
+        """Validate and process URLs before sending requests"""
+        raw_text = self.text_area.getText()
+        if not raw_text.strip():
+            self._callbacks.printOutput(u"No URLs provided.")
+            self.update_status("No URLs provided")
+            return []
+
+        urls = raw_text.strip().split('\n')
+        valid_urls = []
+        invalid_count = 0
+        
+        from javax.swing import SwingUtilities
+        
+        for url in urls:
+            url = url.strip()
+            if not url:
+                continue
+                
+            if not url.startswith(("http://", "https://")):
+                self._callbacks.printError(u"URL must start with http:// or https://: {}".format(url))
+                SwingUtilities.invokeLater(lambda u=url: self.add_error_to_table(u, "INVALID PROTOCOL", "Must start with http:// or https://"))
+                invalid_count += 1
+                continue
+            
+            if not self.validate_url_format(url):
+                self._callbacks.printError(u"Invalid URL format: {}".format(url))
+                SwingUtilities.invokeLater(lambda u=url: self.add_error_to_table(u, "INVALID FORMAT", "Malformed URL"))
+                invalid_count += 1
+                continue
+            
+            try:
+                parsed_url = URL(url)
+                host = parsed_url.getHost()
+                
+                dns_ok, dns_error = self.test_dns_resolution(host)
+                if not dns_ok:
+                    self._callbacks.printError(u"DNS resolution failed for: {}".format(url))
+                    SwingUtilities.invokeLater(lambda u=url, e=dns_error: self.add_error_to_table(u, "DNS ERROR", e))
+                    invalid_count += 1
+                    continue
+                    
+            except MalformedURLException as e:
+                self._callbacks.printError(u"Malformed URL: {} - {}".format(url, unicode(e)))
+                SwingUtilities.invokeLater(lambda u=url: self.add_error_to_table(u, "MALFORMED", "Invalid URL structure"))
+                invalid_count += 1
+                continue
+            
+            valid_urls.append(url)
+            self._callbacks.printOutput(u"Valid URL: {}".format(url))
+        
+        if invalid_count > 0:
+            self.update_status("Found {} valid URLs, {} invalid".format(len(valid_urls), invalid_count))
+        
+        return valid_urls
+
+    def add_error_to_table(self, url, status, error_details):
+        """Adicionar erro à tabela de resultados"""
+        try:
+            row = [url, status, "0", "0ms", error_details]
+            self.table_model.addRow(row)
+        except Exception as e:
+            self._callbacks.printError(u"Error adding error row to table: {}".format(unicode(e)))
+
     def on_send_requests(self, event):
         # Prevent multiple simultaneous executions
         with self.lock:
@@ -165,46 +258,31 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
             self.is_running = True
         
         try:
-            raw_text = self.text_area.getText()
-            if not raw_text.strip():
-                self._callbacks.printOutput(u"No URLs provided.")
-                self.update_status("No URLs provided")
-                with self.lock:
-                    self.is_running = False
-                return
-
-            urls = raw_text.strip().split('\n')
-            valid_urls = []
-            
-            for url in urls:
-                url = url.strip()
-                if url and url.startswith("http"):
-                    valid_urls.append(url)
-                elif url:
-                    self._callbacks.printError(u"Ignoring invalid URL: " + unicode(url))
-
-            if not valid_urls:
-                self.update_status("No valid URLs found")
-                with self.lock:
-                    self.is_running = False
-                return
-
-            # Reset counters
-            self.request_count = len(valid_urls)
-            self.completed_count = 0
-            
-            # Clear previous results
+            # Clear previous results first
             self.table_model.setRowCount(0)
             with self.lock:
                 self.request_responses.clear()
             
-            # Clear message viewers with empty arrays instead of None
+            # Clear message viewers
             empty_message = []
             self.request_viewer.setMessage(empty_message, True)
             self.response_viewer.setMessage(empty_message, False)
             
-            self._callbacks.printOutput(u"Starting {} requests...".format(self.request_count))
-            self.update_status("Sending {} requests...".format(self.request_count))
+            # Validate and get URLs
+            valid_urls = self.validate_and_process_urls()
+            
+            if not valid_urls:
+                self.update_status("No valid URLs to process")
+                with self.lock:
+                    self.is_running = False
+                return
+
+            # Reset counters for valid URLs only
+            self.request_count = len(valid_urls)
+            self.completed_count = 0
+            
+            self._callbacks.printOutput(u"Starting {} HTTP requests...".format(self.request_count))
+            self.update_status("Sending {} HTTP requests...".format(self.request_count))
             
             # Disable button during processing
             self.send_button.setEnabled(False)
@@ -228,7 +306,7 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
             pass  # Ignore threading issues with UI updates
 
     def add_result(self, url, status_code, response_length, duration_ms, request_response):
-        """Add a result to the table (thread-safe)"""
+        """Add a successful result to the table (thread-safe)"""
         try:
             # Format duration
             if duration_ms < 1000:
@@ -245,8 +323,8 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
             
             def update_table():
                 try:
-                    # Add row to table
-                    row = [url, str(status_code), str(response_length), time_str]
+                    # Add row to table with empty error details for successful requests
+                    row = [url, str(status_code), str(response_length), time_str, ""]
                     self.table_model.addRow(row)
                 except Exception as e:
                     self._callbacks.printError(u"Error adding row to table: {}".format(unicode(e)))
@@ -254,44 +332,41 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
             SwingUtilities.invokeLater(update_table)
             
             # Update completion count
-            with self.lock:
-                self.completed_count += 1
-                if self.completed_count >= self.request_count:
-                    # All requests completed
-                    self.update_status("Completed {} requests successfully".format(self.request_count))
-                    SwingUtilities.invokeLater(lambda: self.send_button.setEnabled(True))
-                    self._callbacks.printOutput(u"All {} requests completed. Results available in HTTP Batch Tool tab.".format(self.request_count))
-                    self.is_running = False  # Reset flag
-                else:
-                    self.update_status("Completed {}/{} requests".format(self.completed_count, self.request_count))
+            self.check_completion()
+            
         except Exception as e:
             self._callbacks.printError(u"Error updating results: {}".format(unicode(e)))
 
     def request_failed(self, url, error_msg):
-        """Handle failed requests"""
+        """Handle failed HTTP requests"""
         try:
             from javax.swing import SwingUtilities
             
             def update_table():
                 try:
-                    row = [url, "ERROR", "0", error_msg]
+                    row = [url, "ERROR", "0", "0ms", error_msg]
                     self.table_model.addRow(row)
                 except Exception as e:
                     self._callbacks.printError(u"Error adding failed row to table: {}".format(unicode(e)))
             
             SwingUtilities.invokeLater(update_table)
+            self.check_completion()
             
-            with self.lock:
-                self.completed_count += 1
-                if self.completed_count >= self.request_count:
-                    self.update_status("Completed {} requests (some failed)".format(self.request_count))
-                    SwingUtilities.invokeLater(lambda: self.send_button.setEnabled(True))
-                    self._callbacks.printOutput(u"All {} requests completed. Results available in HTTP Batch Tool tab.".format(self.request_count))
-                    self.is_running = False  # Reset flag
-                else:
-                    self.update_status("Completed {}/{} requests".format(self.completed_count, self.request_count))
         except Exception as e:
             self._callbacks.printError(u"Error updating failed result: {}".format(unicode(e)))
+
+    def check_completion(self):
+        """Check if all requests are completed"""
+        with self.lock:
+            self.completed_count += 1
+            if self.completed_count >= self.request_count:
+                self.update_status("Completed {} requests".format(self.request_count))
+                from javax.swing import SwingUtilities
+                SwingUtilities.invokeLater(lambda: self.send_button.setEnabled(True))
+                self._callbacks.printOutput(u"All {} HTTP requests completed. Results available in HTTP Batch Tool tab.".format(self.request_count))
+                self.is_running = False  # Reset flag
+            else:
+                self.update_status("Completed {}/{} requests".format(self.completed_count, self.request_count))
 
     def on_table_selection(self, selected_row):
         """Handle table row selection to display request/response"""
@@ -306,7 +381,7 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
                     self.request_viewer.setMessage(request_response.getRequest(), True)
                     self.response_viewer.setMessage(request_response.getResponse(), False)
                 else:
-                    # Clear viewers if no data available - use empty arrays instead of None
+                    # Clear viewers if no data available
                     empty_message = []
                     self.request_viewer.setMessage(empty_message, True)
                     self.response_viewer.setMessage(empty_message, False)
@@ -315,16 +390,11 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
             self._callbacks.printError(u"Error displaying message: {}".format(unicode(e)))
 
     def fetch_url(self, url):
+        """Make HTTP request to valid URL"""
         start_time = time.time()
         
         try:
-            try:
-                parsed_url = URL(url)
-            except MalformedURLException as e:
-                error_msg = "Malformed URL: {}".format(unicode(e))
-                self.request_failed(url, error_msg)
-                return
-
+            parsed_url = URL(url)
             host = parsed_url.getHost()
             port = parsed_url.getPort()
             protocol = parsed_url.getProtocol()
@@ -333,30 +403,33 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
             if port == -1:
                 port = 443 if protocol == "https" else 80
 
+            # Build HTTP request
             request = self._helpers.buildHttpRequest(parsed_url)
             analyzed = self._helpers.analyzeRequest(request)
             headers = list(analyzed.getHeaders())
             body = request[analyzed.getBodyOffset():]
 
+            # Update User-Agent
             headers = [h for h in headers if not h.lower().startswith("user-agent:")]
             headers.append(u"User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0")
             request = self._helpers.buildHttpMessage(headers, body)
 
+            # Build HTTP service
             http_service = self._helpers.buildHttpService(host, port, protocol)
 
+            # Make HTTP request
             request_response = self._callbacks.makeHttpRequest(http_service, request)
 
             if request_response is None:
-                error_msg = "No response received"
-                self.request_failed(url, error_msg)
+                self.request_failed(url, "No response received")
                 return
 
             raw_response = request_response.getResponse()
             if raw_response is None:
-                error_msg = "Empty response"
-                self.request_failed(url, error_msg)
+                self.request_failed(url, "Empty response")
                 return
 
+            # Analyze response
             response_info = self._helpers.analyzeResponse(raw_response)
             status_code = response_info.getStatusCode()
             response_length = len(raw_response)
@@ -364,11 +437,26 @@ class BurpExtender(IBurpExtender, ITab, IExtensionStateListener):
             # Calculate duration
             duration_ms = (time.time() - start_time) * 1000
 
-            # Add to results table with request_response object
+            # Add successful result
             self.add_result(url, status_code, response_length, duration_ms, request_response)
 
         except Exception as e:
-            error_msg = "Exception: {}".format(unicode(e)[:50])  # Truncate long error messages
+            # Categorize different types of errors
+            error_str = unicode(e)
+            if "UnknownHostException" in error_str:
+                error_msg = "Host not found"
+            elif "ConnectException" in error_str:
+                error_msg = "Connection refused"
+            elif "SocketTimeoutException" in error_str:
+                error_msg = "Request timeout"
+            elif "SSLException" in error_str or "SSL" in error_str:
+                error_msg = "SSL/TLS error"
+            elif "MalformedURLException" in error_str:
+                error_msg = "Malformed URL"
+            else:
+                error_msg = "Network error: {}".format(error_str[:50])
+            
+            self._callbacks.printError(u"HTTP request failed for {}: {}".format(url, error_str))
             self.request_failed(url, error_msg)
 
     def paste_urls(self, event):
